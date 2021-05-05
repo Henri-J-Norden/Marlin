@@ -153,6 +153,11 @@
   #include "../libs/buzzer.h"
 #endif
 
+#if ENABLED(DGUS_LCD_UI_MKS)
+  #include "../lcd/extui/lib/dgus/DGUSScreenHandler.h"
+  #include "../lcd/extui/lib/dgus/DGUSDisplayDef.h"
+#endif
+
 #pragma pack(push, 1) // No padding between variables
 
 #if HAS_ETHERNET
@@ -341,6 +346,11 @@ typedef struct SettingsDataStruct {
   int16_t lcd_contrast;                                 // M250 C
 
   //
+  // HAS_LCD_BRIGHTNESS
+  //
+  uint8_t lcd_brightness;                                 // M251 B
+
+  //
   // Controller fan settings
   //
   controllerFan_settings_t controllerFan_settings;      // M710
@@ -459,6 +469,16 @@ typedef struct SettingsDataStruct {
   //
   #if ENABLED(SOUND_MENU_ITEM)
     bool buzzer_enabled;
+  #endif
+
+  //
+  // MKS UI controller
+  //
+  #if ENABLED(DGUS_LCD_UI_MKS)
+    uint8_t mks_language_index;                         // Display Language
+    xy_int_t mks_corner_offsets[5];                     // Bed Tramming
+    xyz_int_t mks_park_pos;                             // Custom Parking (without NOZZLE_PARK)
+    celsius_t mks_min_extrusion_temp;                   // Min E Temp (shadow M302 value)
   #endif
 
   #if HAS_MULTI_LANGUAGE
@@ -983,6 +1003,22 @@ void MarlinSettings::postprocess() {
     }
 
     //
+    // LCD Brightness
+    //
+    {
+      _FIELD_TEST(lcd_brightness);
+
+      const uint8_t lcd_brightness =
+        #if HAS_LCD_BRIGHTNESS
+          ui.brightness
+        #else
+          255
+        #endif
+      ;
+      EEPROM_WRITE(lcd_brightness);
+    }
+
+    //
     // Controller Fan
     //
     {
@@ -1403,6 +1439,16 @@ void MarlinSettings::postprocess() {
     #endif
 
     //
+    // MKS UI controller
+    //
+    #if ENABLED(DGUS_LCD_UI_MKS)
+      EEPROM_WRITE(mks_language_index);
+      EEPROM_WRITE(mks_corner_offsets);
+      EEPROM_WRITE(mks_park_pos);
+      EEPROM_WRITE(mks_min_extrusion_temp);
+    #endif
+
+    //
     // Selected LCD language
     //
     #if HAS_MULTI_LANGUAGE
@@ -1580,7 +1626,7 @@ void MarlinSettings::postprocess() {
 
         #if ENABLED(MESH_BED_LEVELING)
           if (!validating) mbl.z_offset = dummyf;
-          if (mesh_num_x == GRID_MAX_POINTS_X && mesh_num_y == GRID_MAX_POINTS_Y) {
+          if (mesh_num_x == (GRID_MAX_POINTS_X) && mesh_num_y == (GRID_MAX_POINTS_Y)) {
             // EEPROM data fits the current mesh
             EEPROM_READ(mbl.z_values);
           }
@@ -1627,7 +1673,7 @@ void MarlinSettings::postprocess() {
         EEPROM_READ_ALWAYS(grid_max_x);                // 1 byte
         EEPROM_READ_ALWAYS(grid_max_y);                // 1 byte
         #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
-          if (grid_max_x == GRID_MAX_POINTS_X && grid_max_y == GRID_MAX_POINTS_Y) {
+          if (grid_max_x == (GRID_MAX_POINTS_X) && grid_max_y == (GRID_MAX_POINTS_Y)) {
             if (!validating) set_bed_leveling_enabled(false);
             EEPROM_READ(bilinear_grid_spacing);        // 2 ints
             EEPROM_READ(bilinear_start);               // 2 ints
@@ -1850,6 +1896,18 @@ void MarlinSettings::postprocess() {
         EEPROM_READ(lcd_contrast);
         if (!validating) {
           TERN_(HAS_LCD_CONTRAST, ui.set_contrast(lcd_contrast));
+        }
+      }
+
+      //
+      // LCD Brightness
+      //
+      {
+        _FIELD_TEST(lcd_brightness);
+        uint8_t lcd_brightness;
+        EEPROM_READ(lcd_brightness);
+        if (!validating) {
+          TERN_(HAS_LCD_BRIGHTNESS, ui.set_brightness(lcd_brightness));
         }
       }
 
@@ -2300,6 +2358,17 @@ void MarlinSettings::postprocess() {
       #if ENABLED(SOUND_MENU_ITEM)
         _FIELD_TEST(buzzer_enabled);
         EEPROM_READ(ui.buzzer_enabled);
+      #endif
+
+      //
+      // MKS UI controller
+      //
+      #if ENABLED(DGUS_LCD_UI_MKS)
+        _FIELD_TEST(mks_language_index);
+        EEPROM_READ(mks_language_index);
+        EEPROM_READ(mks_corner_offsets);
+        EEPROM_READ(mks_park_pos);
+        EEPROM_READ(mks_min_extrusion_temp);
       #endif
 
       //
@@ -2868,6 +2937,11 @@ void MarlinSettings::reset() {
   TERN_(HAS_LCD_CONTRAST, ui.set_contrast(DEFAULT_LCD_CONTRAST));
 
   //
+  // LCD Brightness
+  //
+  TERN_(HAS_LCD_BRIGHTNESS, ui.set_brightness(DEFAULT_LCD_BRIGHTNESS));
+
+  //
   // Controller Fan
   //
   TERN_(USE_CONTROLLER_FAN, controllerFan.reset());
@@ -2966,6 +3040,11 @@ void MarlinSettings::reset() {
       password.is_set = false;
     #endif
   #endif
+
+  //
+  // MKS UI controller
+  //
+  TERN_(DGUS_LCD_UI_MKS, MKS_reset_settings());
 
   postprocess();
 
@@ -3447,6 +3526,11 @@ void MarlinSettings::reset() {
     #if HAS_LCD_CONTRAST
       CONFIG_ECHO_HEADING("LCD Contrast:");
       CONFIG_ECHO_MSG("  M250 C", ui.contrast);
+    #endif
+
+    #if HAS_LCD_BRIGHTNESS
+      CONFIG_ECHO_HEADING("LCD Brightness:");
+      CONFIG_ECHO_MSG("  M251 B", ui.brightness);
     #endif
 
     TERN_(CONTROLLER_FAN_EDITABLE, M710_report(forReplay));

@@ -50,11 +50,13 @@ namespace ExtUI {
   void onFactoryReset() {}
 
   void onStoreSettings(char *buff) {
+    CrealityDWIN.Save_Settings();
     memcpy(buff, &CrealityDWIN.eeprom_settings, min(sizeof(CrealityDWIN.eeprom_settings), eeprom_data_size));
   }
 
   void onLoadSettings(const char *buff) {
     memcpy(&CrealityDWIN.eeprom_settings, buff, min(sizeof(CrealityDWIN.eeprom_settings), eeprom_data_size));
+    CrealityDWIN.Load_Settings();
   }
 
   void onConfigurationStoreWritten(bool success) {}
@@ -64,10 +66,9 @@ namespace ExtUI {
   #if HAS_MESH
     void onMeshLevelingStart() {}
 
-    void onMeshUpdate(const int8_t xpos, const int8_t ypos, const float &zval) {
+    void onMeshUpdate(const int8_t xpos, const int8_t ypos, const_float_t zval) {
       // Called when any mesh points are updated
     }
-
     void onMeshUpdate(const int8_t xpos, const int8_t ypos, const probe_state_t state) {
       // Called to indicate a special condition
     }
@@ -87,7 +88,7 @@ namespace ExtUI {
           CrealityDWIN.Confirm_Handler((char*)"Temp too high");
           break;
         case PID_TUNING_TIMEOUT:
-          CrealityDWIN.Confirm_Handler((char*)"PID Timout");
+          CrealityDWIN.Confirm_Handler((char*)"PID Timeout");
           break;
         case PID_DONE:
           CrealityDWIN.Confirm_Handler((char*)"PID Done");
