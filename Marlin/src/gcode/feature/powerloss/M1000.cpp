@@ -31,6 +31,9 @@
 #if ENABLED(EXTENSIBLE_UI)
   #include "../../../lcd/extui/ui_api.h"
 #endif
+#if ENABLED(DWIN_CREALITY_LCD)
+  #include "../../../lcd/e3v2/creality/creality_dwin.h" // Temporary fix until it can be better implemented
+#endif
 
 #define DEBUG_OUT ENABLED(DEBUG_POWER_LOSS_RECOVERY)
 #include "../../../core/debug_out.h"
@@ -59,16 +62,18 @@ inline void plr_error(PGM_P const prefix) {
 void GcodeSuite::M1000() {
 
   if (recovery.valid()) {
-    if (parser.seen('S')) {
+    if (parser.seen_test('S')) {
       #if HAS_LCD_MENU
         ui.goto_screen(menu_job_recovery);
       #elif ENABLED(EXTENSIBLE_UI)
         ExtUI::onPowerLossResume();
+      #elif ENABLED(DWIN_CREALITY_LCD) // Temporary fix until it can be better implemented
+        CrealityDWIN.Popup_Handler(Resume);
       #else
         SERIAL_ECHO_MSG("Resume requires LCD.");
       #endif
     }
-    else if (parser.seen('C')) {
+    else if (parser.seen_test('C')) {
       #if HAS_LCD_MENU
         lcd_power_loss_recovery_cancel();
       #else
